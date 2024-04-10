@@ -4,7 +4,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <windows.h>
-
+#include <stdbool.h>
 #pragma comment(lib, "Ws2_32.lib")
 #pragma warning(disable:4996)
 
@@ -21,6 +21,7 @@ int iResult;
 // Vytvorenie socketu
 SOCKET ConnectSocket = INVALID_SOCKET;
 
+FILE* subor;
 int pocitanie(number) {
     int rozdelene_cisla = number / 10;
     int posledne_cislo = rozdelene_cisla % 10;
@@ -35,21 +36,40 @@ int pocitanie(number) {
     int zvysok = (suma + posledne_cislo) % delitel;
     return zvysok;
 }
-void sifra() {
-    char* cipher_text = "dRTERCZRDDVPRYX";
-    int key = 55;
-
-    char decrypted_text[148];
-
+void sifra(char* string) {
+    int kluc = 55;
+    char odpoved[149];
     int i = 0;
-    while (cipher_text[i] != '\0') {
-        decrypted_text[i] = cipher_text[i] ^ key;
+
+    while (i < 148) {
+        odpoved[i] = (string[i] == '\0') ? '7' : (string[i] ^ kluc);
         i++;
     }
-    decrypted_text[i] = '\0';
+    odpoved[i] = '\0';
 
-    printf("Decrypted Text: %s\n", decrypted_text);
+    printf("Dekodovany Text: ");
+    for (int j = 0; odpoved[j] != '\0'; j++) {
+        printf("%c", odpoved[j]);
+    }
+    printf("\n");
 }
+
+void display_letters_on_prime_positions(char* input_string) {
+    int dlzka = strlen(input_string);
+    for (int i = 1; i < dlzka; i++) {
+        bool is_prime = true;
+        for (int j = 2; j * j <= i + 1; j++) {
+            if ((i + 1) % j == 0) {
+                is_prime = false;
+                break;
+            }
+        }
+        if (is_prime)
+            printf("%c", input_string[i]);
+    }
+    printf("\n");
+}
+
 
 void odoslanie() {
     HANDLE  hConsole;
@@ -57,14 +77,13 @@ void odoslanie() {
     // Odoslanie dat
     SetConsoleTextAttribute(hConsole, 1);
     printf("USER> ");
-    
+    fprintf(subor, "USER> ");
     char sprava[1024];
-    int size = 1024;
-    fgets(sprava, size, stdin);
+    scanf(" %[^\n]",&sprava);
 
-    char sendbuf[DEFAULT_BUFLEN];
+    
     const char* data_to_send = sprava;
-    int sendbuf_len = strlen(data_to_send);
+    int sendbuf_len = strlen(sprava);
     SetConsoleTextAttribute(hConsole, 15);
 
     iResult = send(ConnectSocket, sprava, sendbuf_len, 0);
@@ -78,6 +97,7 @@ void odoslanie() {
     SetConsoleTextAttribute(hConsole, 8);
     printf("\nPoslane byty: %d\n", iResult);
     SetConsoleTextAttribute(hConsole, 15);
+    fprintf(subor, "%s\n", sprava);
 }
 
 void prijatie() {
@@ -93,14 +113,9 @@ void prijatie() {
 
     char recvbuf[DEFAULT_BUFLEN];
     int recvbuflen = DEFAULT_BUFLEN;
-    
     iResult = recv(ConnectSocket, recvbuf, recvbuflen, 0);
     if (iResult > 0) {
         recvbuf[iResult] = '\0';
-    }
-    if (iResult == 405) {
-        int vysledok = pocitanie(ais_id);
-        printf("Vysledok je: %d", vysledok);
     }
     else if (iResult == 0) {
         printf("====Pripojenie ukoncene serverom====\n");
@@ -110,6 +125,8 @@ void prijatie() {
     SetConsoleTextAttribute(hConsole, 10);
     short x1 = 0;
     printf("SERVER>");
+    fprintf(subor, "SERVER> ");
+    
     for (int i = 0; recvbuf[i] != '\0'; i++) {
         x = 55 + x1;
         x1++;
@@ -131,6 +148,20 @@ void prijatie() {
     x = 0;
     y += 1;
     putchar('\n');
+    SetConsoleTextAttribute(hConsole, 8);
+    printf("\nPrijate byty: %d\n", iResult);
+    if (iResult == 405) {
+        int vysledok = pocitanie(ais_id);
+        printf("Vysledok je: %d\n", vysledok);
+    }
+    if (iResult == 148) {
+        sifra(recvbuf);
+    }
+    if (iResult == 23) {
+        display_letters_on_prime_positions(recvbuf);
+    }
+    SetConsoleTextAttribute(hConsole, 15);
+    fprintf(subor, "%s\n",recvbuf);
 }
 
 
@@ -139,7 +170,6 @@ int main() {
     HANDLE  hConsole;
     hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     SetConsoleOutputCP(CP_UTF8);
-    system("chcp 65001 > nul");
     WSADATA wsaData;
     int iResult;
     iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -195,12 +225,30 @@ int main() {
     printf("/\\____) |   | |   | (___) |     | )   ( || )      \n");
     printf("\\_______)   )_(   (_______)     |/     \\||/       \n");
     printf("===============================================\n");
-    sifra();
     printf("Pripojenie na server bolo uspesne!\n");
+    display_letters_on_prime_positions("XLOZGP.R.ACLHCOGAGTER");
+    if ((subor = fopen("log_chat.txt", "w")) == 0)
+    {
+        printf("SYSTEM>> Logging file can not be opened.\n");
+        return -2;
+    }
+
+
+
     odoslanie();
     prijatie();
-    //753422
-    
+    // 126751
+    // 844848
+    // 753422
+    // 1
+    // 333222334
+    // 123
+    // dRTERCZRDDVPRYX
+    // 27
+    // 86
+    // M.E.
+    // PRIMENUMBER
+    // XLOZGP.R.ACLHCOGAGTER
     while (1) {
         COORD point = { x, y };
         odoslanie();
@@ -211,6 +259,8 @@ int main() {
 
 
     // Ukoncenie
+    if (fclose(subor) == EOF)
+        printf("Subor sa nepodarilo zatvorit.\n");
     closesocket(ConnectSocket);
     freeaddrinfo(result);
     WSACleanup();
