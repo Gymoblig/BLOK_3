@@ -7,21 +7,19 @@
 #include <stdbool.h>
 #pragma comment(lib, "Ws2_32.lib")
 #pragma warning(disable:4996)
-
 #define DEFAULT_BUFLEN 4096
-int ais_id=126751;
+
+int ais_id = 126751;
 COORD point;
 short x = 0;
 short y = 8;
-
-
 //Winsock
 WSADATA wsaData;
 int iResult;
 // Vytvorenie socketu
 SOCKET ConnectSocket = INVALID_SOCKET;
-
 FILE* subor;
+
 int pocitanie(number) {
     int rozdelene_cisla = number / 10;
     int posledne_cislo = rozdelene_cisla % 10;
@@ -54,24 +52,25 @@ void sifra(char* string) {
     printf("\n");
 }
 
-void display_letters_on_prime_positions(char* input_string) {
-    int dlzka = strlen(input_string);
+void prvocisla(char* sifricka) {
+    printf("Vysledok je: ");
+    int dlzka = strlen(sifricka);
     for (int i = 1; i < dlzka; i++) {
-        bool is_prime = true;
+        bool je_prvocislo = true;
         for (int j = 2; j * j <= i + 1; j++) {
             if ((i + 1) % j == 0) {
-                is_prime = false;
+                je_prvocislo = false;
                 break;
             }
         }
-        if (is_prime)
-            printf("%c", input_string[i]);
+        if (je_prvocislo)
+            printf("%c", sifricka[i]);
     }
     printf("\n");
 }
 
 
-void odoslanie() {
+char odoslanie() {
     HANDLE  hConsole;
     hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     // Odoslanie dat
@@ -79,9 +78,9 @@ void odoslanie() {
     printf("USER> ");
     fprintf(subor, "USER> ");
     char sprava[1024];
-    scanf(" %[^\n]",&sprava);
+    scanf(" %[^\n]", &sprava);
 
-    
+
     const char* data_to_send = sprava;
     int sendbuf_len = strlen(sprava);
     SetConsoleTextAttribute(hConsole, 15);
@@ -93,26 +92,21 @@ void odoslanie() {
         WSACleanup();
         return 1;
     }
-
     SetConsoleTextAttribute(hConsole, 8);
     printf("\nPoslane byty: %d\n", iResult);
     SetConsoleTextAttribute(hConsole, 15);
-    fprintf(subor, "%s\n", sprava);
+    fprintf(subor, " %s\n", sprava);
 }
 
-void prijatie() {
-    x = 55;
-    y += 5;
-    
+char* prijatie() {
     // Prijatie
     HANDLE  hConsole;
     hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-    COORD point = { x, y };
-    SetConsoleCursorPosition(hConsole, point);
-
-
+    SetConsoleTextAttribute(hConsole, 10);
     char recvbuf[DEFAULT_BUFLEN];
     int recvbuflen = DEFAULT_BUFLEN;
+    fprintf(subor, "SERVER> ");
+
     iResult = recv(ConnectSocket, recvbuf, recvbuflen, 0);
     if (iResult > 0) {
         recvbuf[iResult] = '\0';
@@ -120,34 +114,45 @@ void prijatie() {
     else if (iResult == 0) {
         printf("====Pripojenie ukoncene serverom====\n");
     }
-    x++;
-    y++;
-    SetConsoleTextAttribute(hConsole, 10);
-    short x1 = 0;
-    printf("SERVER>");
-    fprintf(subor, "SERVER> ");
-    
-    for (int i = 0; recvbuf[i] != '\0'; i++) {
-        x = 55 + x1;
-        x1++;
-        
-        COORD point = { x , y };
-        SetConsoleCursorPosition(hConsole, point);
-        
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    GetConsoleScreenBufferInfo(hConsole, &csbi);
 
-        putc(*(recvbuf + i), stdout);
-        fflush(stdout);
-        Sleep(10);
-        if (x > 117) 
-        {
-            y++;
-            x1 = 0;
-        }
-    
+    int sirka = csbi.dwSize.X;
+    int stred = sirka / 2;
+    char* slovo_a_medzera;
+    int dlzka_riadku = 0;
+    int je_prve_v_riadku = 1;
+    char* dalsie_slovo_a_medzera = NULL;
+
+    fprintf(subor, " %s\n", recvbuf);
+    slovo_a_medzera = strtok_s(recvbuf, " ", &dalsie_slovo_a_medzera);  // &next_token ako context buffer
+    printf("\n");
+    for (int i = 0; i < stred; i++) {
+        printf(" ");
     }
-    x = 0;
-    y += 1;
-    putchar('\n');
+    printf("SERVER>");
+    while (slovo_a_medzera != NULL) {
+        //Ukoncenie riadka aby neodseklo slovo
+        int dlzka_slova = strlen(slovo_a_medzera);
+        if ((dlzka_riadku + dlzka_slova + 1 > stred) || je_prve_v_riadku) {
+            printf("\n");
+            for (int j = 0; j < stred; j++) {
+                printf(" ");
+            }
+            dlzka_riadku = 0;
+            je_prve_v_riadku = 0;
+        }
+
+        //Vypisanie slova po zisteni
+        for (int k = 0; k < dlzka_slova; k++) {
+            printf("%c", slovo_a_medzera[k]);
+            Sleep(10);
+        }
+        printf(" ");
+
+        dlzka_riadku += dlzka_slova + 1;
+        slovo_a_medzera = strtok_s(NULL, " ", &dalsie_slovo_a_medzera);
+    }
     SetConsoleTextAttribute(hConsole, 8);
     printf("\nPrijate byty: %d\n", iResult);
     if (iResult == 405) {
@@ -158,10 +163,10 @@ void prijatie() {
         sifra(recvbuf);
     }
     if (iResult == 23) {
-        display_letters_on_prime_positions(recvbuf);
+        prvocisla(recvbuf);
     }
     SetConsoleTextAttribute(hConsole, 15);
-    fprintf(subor, "%s\n",recvbuf);
+
 }
 
 
@@ -177,27 +182,21 @@ int main() {
         printf("WSAStartup failed with error: %d\n", iResult);
         return 1;
     }
-
     // Info o adrese servera
     struct addrinfo hints, * result = NULL, * ptr = NULL;
-
     ZeroMemory(&hints, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
-
     // IP adresa server
     const char* server_address = "147.175.115.34";
     const char* server_port = "777";
-
     iResult = getaddrinfo(server_address, server_port, &hints, &result);
     if (iResult != 0) {
         printf("getaddrinfo failed with error: %d\n", iResult);
         WSACleanup();
         return 1;
     }
-
-
     ptr = result;
     ConnectSocket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
     if (ConnectSocket == INVALID_SOCKET) {
@@ -206,7 +205,6 @@ int main() {
         WSACleanup();
         return 1;
     }
-
     // Pripojenie k serveru
     iResult = connect(ConnectSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
     if (iResult == SOCKET_ERROR) {
@@ -226,44 +224,24 @@ int main() {
     printf("\\_______)   )_(   (_______)     |/     \\||/       \n");
     printf("===============================================\n");
     printf("Pripojenie na server bolo uspesne!\n");
-    display_letters_on_prime_positions("XLOZGP.R.ACLHCOGAGTER");
-    if ((subor = fopen("log_chat.txt", "w")) == 0)
-    {
-        printf("SYSTEM>> Logging file can not be opened.\n");
+    if ((subor = fopen("log.txt", "w")) == 0) {
+        printf("Bratku nedal som to a neotvoril som subor :(");
         return -2;
     }
-
-
-
-    odoslanie();
-    prijatie();
-    // 126751
-    // 844848
-    // 753422
-    // 1
-    // 333222334
-    // 123
-    // dRTERCZRDDVPRYX
-    // 27
-    // 86
-    // M.E.
-    // PRIMENUMBER
-    // XLOZGP.R.ACLHCOGAGTER
     while (1) {
-        COORD point = { x, y };
+        if ((subor = fopen("log.txt", "a")) == 0) {
+            printf("Bratku nedal som to a neotvoril som subor :(");
+            return -2;
+        }
         odoslanie();
         prijatie();
+        fclose(subor);
     }
-    
-
-
-
     // Ukoncenie
     if (fclose(subor) == EOF)
         printf("Subor sa nepodarilo zatvorit.\n");
     closesocket(ConnectSocket);
     freeaddrinfo(result);
     WSACleanup();
-
     return 0;
 }
