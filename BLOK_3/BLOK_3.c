@@ -239,7 +239,7 @@ int main() {
     }
     // Ukoncenie
     if (fclose(subor) == EOF)
-        printf("Subor sa nepodarilo zatvorit.\n");
+        printf("Subor sa nepodarilo zatvorit\n");
     closesocket(ConnectSocket);
     freeaddrinfo(result);
     WSACleanup();
