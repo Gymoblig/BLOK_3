@@ -9,7 +9,7 @@
 #pragma warning(disable:4996)
 #define DEFAULT_BUFLEN 4096
 
-int ais_id = 126751;
+int ais_id = 0;
 COORD point;
 short x = 0;
 short y = 8;
@@ -30,7 +30,6 @@ int pocitanie(number) {
         suma += rozdelene_cisla % 10;
         rozdelene_cisla /= 10;
     }
-
     int zvysok = (suma + posledne_cislo) % delitel;
     return zvysok;
 }
@@ -74,7 +73,7 @@ char odoslanie() {
     HANDLE  hConsole;
     hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     // Odoslanie dat
-    SetConsoleTextAttribute(hConsole, 1);
+    SetConsoleTextAttribute(hConsole, 3);
     printf("USER> ");
     fprintf(subor, "USER> ");
     char sprava[1024];
@@ -92,8 +91,12 @@ char odoslanie() {
         WSACleanup();
         return 1;
     }
+    if (iResult == 6 && sendbuf_len == 6 && strncmp(sprava, "126", 3) == 0) {
+        ais_id = atoi(sprava);
+    }
+
     SetConsoleTextAttribute(hConsole, 8);
-    printf("\nPoslane byty: %d\n", iResult);
+    //printf("\nPoslane byty: %d\n", iResult);
     SetConsoleTextAttribute(hConsole, 15);
     fprintf(subor, " %s\n", sprava);
 }
@@ -112,7 +115,7 @@ char* prijatie() {
         recvbuf[iResult] = '\0';
     }
     else if (iResult == 0) {
-        printf("====Pripojenie ukoncene serverom====\n");
+        printf("Pripojenie ukoncene serverom\n");
     }
     CONSOLE_SCREEN_BUFFER_INFO csbi;
     GetConsoleScreenBufferInfo(hConsole, &csbi);
@@ -154,7 +157,7 @@ char* prijatie() {
         slovo_a_medzera = strtok_s(NULL, " ", &dalsie_slovo_a_medzera);
     }
     SetConsoleTextAttribute(hConsole, 8);
-    printf("\nPrijate byty: %d\n", iResult);
+    //printf("\nPrijate byty: %d\n", iResult);
     if (iResult == 405) {
         int vysledok = pocitanie(ais_id);
         printf("Vysledok je: %d\n", vysledok);
